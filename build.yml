@@ -1,0 +1,75 @@
+name: Tek Dosya APK Olustur
+
+on:
+  push:
+    branches: [ "ana", "main" ]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Repo Dosyalarini Al
+      uses: actions/checkout@v4
+
+    - name: Java 21 Kurulumu
+      uses: actions/setup-java@v4
+      with:
+        distribution: 'temurin'
+        java-version: '21'
+
+    - name: Node.js 22 Kurulumu
+      uses: actions/setup-node@v4
+      with:
+        node-version: '22'
+
+    - name: Capacitor Projesi Olustur ve HTML'i Entegre Et
+      run: |
+        npm init -y
+        npm install @capacitor/core@latest @capacitor/android@latest
+        npm install -D @capacitor/cli@latest
+        mkdir -p www
+        mv index.html www/
+        npx cap init "Sayı Yayınları Z-Kitap" com.sayiyayinlari.zkitap --web-dir www
+        npx cap add android
+
+    - name: Uygulama Adi ve Logoyu Native Duzeyde Sabitle
+      run: |
+        # 1. Uygulama adini Android'in resmi dil dosyasi uzerinden kesin olarak degistiriyoruz
+        STRING_XML="android/app/src/main/res/values/strings.xml"
+        if [ -f "$STRING_XML" ]; then
+          sed -i 's/<string name="app_name">.*<\/string>/<string name="app_name">Sayı Yayınları Z-Kitap<\/string>/g' "$STRING_XML"
+        fi
+
+        # 2. logo.png dosyasini hem ikon hem acilis resmi olarak native klasorlere gomuyoruz
+        if [ -f "logo.png" ]; then
+          mkdir -p android/app/src/main/res/drawable/
+          cp logo.png android/app/src/main/res/drawable/splash.png
+
+          for dir in mdpi hdpi xhdpi xxhdpi xxxhdpi; do
+            mkdir -p android/app/src/main/res/mipmap-$dir/
+            cp logo.png android/app/src/main/res/mipmap-$dir/ic_launcher.png
+            cp logo.png android/app/src/main/res/mipmap-$dir/ic_launcher_round.png
+          done
+
+          # Android'in varsayilan vektor ikon xml'lerini silerek duz PNG'yi okumaya zorluyoruz
+          rm -f android/app/src/main/res/mipmap-*/ic_launcher.xml
+          rm -f android/app/src/main/res/mipmap-*/ic_launcher_round.xml
+        fi
+
+    - name: Gradle Onbellegini ve Kilitlerini Temizle
+      run: |
+        rm -rf ~/.gradle/caches/
+        rm -rf ~/.gradle/lock-files/
+
+    - name: APK Derle (Build)
+      run: |
+        cd android
+        chmod +x gradlew
+        ./gradlew assembleDebug --refresh-dependencies --no-daemon
+
+    - name: APK Dosyasini Indirilebilir Yap
+      uses: actions/upload-artifact@v4
+      with:
+        name: hazir-apk
+        path: android/app/build/outputs/apk/debug/app-debug.apk
