@@ -30,7 +30,7 @@ jobs:
         npm install -D @capacitor/cli@latest
         mkdir -p www
         mv index.html www/
-        npx cap init "Sayı Y.-1.Bölüm" com.sayiyayinlari.zkitap --web-dir www
+        npx cap init "Sayı Y.-2.Bölüm" com.sayiyayinlari.zkitap --web-dir www
         npx cap add android
 
     - name: Uygulama Adi ve Logoyu Native Duzeyde Sabitle
